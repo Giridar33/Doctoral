@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
   const [profileData, setProfileData] = useState({
@@ -20,26 +20,41 @@ const Profile = () => {
       [name]: value,
     }));
   };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Profile Data:', profileData);
-    navigate('/home'); 
-    // Insert API call or custom submission logic here
+    try {
+      const response = await fetch('http://localhost:5000/api/users/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(profileData), // Send the correct object
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+  
+      const data = await response.json();
+      console.log('Profile Updated:', data);
+      navigate('/home');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
   };
+  
 
   return (
     <>
       <style>
         {`
-          /* Reset/normalize some default browser styles */
           * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
           }
 
-          /* Same background gradient as your SignUp/SignIn */
           body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #74ABE2, #5563DE);
@@ -48,44 +63,38 @@ const Profile = () => {
             margin: 0;
           }
 
-          /* Container: two columns side by side */
           .profile-container {
             display: flex;
             width: 100%;
-            height: 100vh; /* Fill the vertical space */
+            height: 100vh;
           }
 
-          /* Left 60% for form */
           .profile-left {
             width: 60%;
             display: flex;
             align-items: center;
-            /* Start from the left edge with some padding */
             padding-left: 3rem;
           }
 
-          /* Right 40% for image */
           .profile-right {
-  width: 40%;
-  height: 100vh; /* Sets the height to fill the viewport */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent; /* Ensures no background color */
-}
+            width: 40%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+          }
 
-.profile-right img {
-  width: 50%; /* Image fills the width of the container */
-  height: 50%; /* Image fills the height of the container */
-  object-fit: cover;
-  border-radius: 700px /* Ensures the image covers the container without distortion */
-}
+          .profile-right img {
+            width: 50%;
+            height: 50%;
+            object-fit: cover;
+            border-radius: 700px;
+          }
 
-
-          /* The form card */
           .profile-form {
             background-color: #fff;
-            width: 70%; /* Fixed width for the form card */
+            width: 70%;
             border-radius: 20px;
             padding: 2rem;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
@@ -138,17 +147,10 @@ const Profile = () => {
           .profile-form button:hover {
             background-color: #3940A7;
           }
-
-          /* SVG or image styling in the right column */
-          .profile-svg {
-            max-width: 70%;
-            height: auto;
-          }
         `}
       </style>
 
       <div className="profile-container">
-        {/* Left 60% with form */}
         <div className="profile-left">
           <form className="profile-form" onSubmit={handleSubmit}>
             <h2>Profile Details</h2>
@@ -221,11 +223,8 @@ const Profile = () => {
           </form>
         </div>
 
-        {/* Right 40% with your SVG or image */}
         <div className="profile-right">
-          {/* Replace with your actual local or remote image path */}
           <img src="/assets/image.jpg" alt="Profile" />
-
         </div>
       </div>
     </>

@@ -6,15 +6,12 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
-// Register user
+// Register user (only name, email, and password)
 router.post('/register',
   [
+    body('name').notEmpty().trim(),
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
-    body('profile.height').isNumeric(),
-    body('profile.weight').isNumeric(),
-    body('profile.age').isNumeric(),
-    body('profile.nationality').notEmpty()
+    body('password').isLength({ min: 6 })
   ],
   async (req, res) => {
     try {
@@ -23,7 +20,7 @@ router.post('/register',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { email, password, profile } = req.body;
+      const { name, email, password } = req.body;
 
       // Check if user exists
       let user = await User.findOne({ email });
@@ -33,9 +30,9 @@ router.post('/register',
 
       // Create new user
       user = new User({
+        name,
         email,
-        password,
-        profile
+        password
       });
 
       await user.save();
@@ -108,21 +105,40 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
-// Update user profile
-router.put('/profile', auth, async (req, res) => {
-  try {
-    const { profile } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { profile },
-      { new: true }
-    ).select('-password');
-    
-    res.json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+// Update user profile (for additional profile details)
+// Update user profile (for additional profile details)
+router.post('/profile', auth,
+  [
+    body('gender').optional().isString(),
+    body('age').optional().isNumeric(),
+    body('nationality').optional().isString(),
+    body('height').optional().isNumeric(),
+    body('weight').optional().isNumeric(),
+    body('name').optional().isString(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      console.log('Incoming Profile Data:', req.body); // Debugging log
+
+      // Update user profile
+      const user = await User.findByIdAndUpdate(
+        req.user.userId,
+        { profile: req.body },  // Corrected this part
+        { new: true }
+      ).select('-password');
+
+      res.json(user);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
+    }
   }
-});
+);
+
 
 module.exports = router;

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const SignUp = () => {
+const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    
   });
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
 
@@ -18,26 +20,39 @@ const SignUp = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const { name, email, password } = formData;
-    if (
-      name.trim() !== '' &&
-      email === 'sample@gmail.com' &&
-      password === '123456'
-    ) {
-      // On successful match, redirect to '/profile'
-      navigate('/profile');
-    } else {
-      alert('Invalid credentials, Try Again !');
+    setError('');
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        if (data.token) {
+          localStorage.setItem('token', data.token);  // Store token in localStorage
+          navigate('/profile');
+        } else {
+          setError('Token missing in response');
+        }
+      } else {
+        setError(data.message || 'Registration failed');
+      }
+    } catch (error) {
+      setError('Something went wrong. Please try again.');
     }
   };
+  
 
   return (
     <>
       <style>
         {`
-          /* Reset/normalize */
           * {
             margin: 0;
             padding: 0;
@@ -104,6 +119,11 @@ const SignUp = () => {
           .signup-form button:hover {
             background-color: #3940A7;
           }
+          .error-message {
+            color: red;
+            text-align: center;
+            margin-bottom: 1rem;
+          }
           .login-link {
             text-align: center;
             margin-top: 1rem;
@@ -121,41 +141,42 @@ const SignUp = () => {
       <div className="signup-container">
         <form className="signup-form" onSubmit={handleSubmit}>
           <h2>Create Account</h2>
+          {error && <p className="error-message">{error}</p>}
 
           <label htmlFor="name">Name</label>
-      <input
-        type="text"
-        id="name"
-        name="name"
-        value={formData.name}
-        onChange={handleChange}
-        required
-      />
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
 
-      <label htmlFor="email">Email</label>
-      <input
-        type="email"
-        id="email"
-        name="email"
-        value={formData.email}
-        onChange={handleChange}
-        required
-      />
+          <label htmlFor="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
 
-      <label htmlFor="password">Password</label>
-      <input
-        type="password"
-        id="password"
-        name="password"
-        value={formData.password}
-        onChange={handleChange}
-        required
-      />
+          <label htmlFor="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
 
-      <button type="submit">Sign Up</button>
+          <button type="submit">Sign Up</button>
 
           <p className="login-link">
-            Already have an account? <Link to="/signin">Sign In</Link>
+            Already have an account? <Link to="/signup">Sign In</Link>
           </p>
         </form>
       </div>
@@ -163,4 +184,5 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default Register;
+

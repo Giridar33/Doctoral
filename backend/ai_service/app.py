@@ -1,80 +1,66 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from transformers import pipeline
-import torch
+from langchain_ollama import OllamaLLM
+from langchain_core.prompts import ChatPromptTemplate
+import logging
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize AI models
+# Configure logging for better debugging
+logging.basicConfig(level=logging.DEBUG)
+
+# Initialize the LLM
 try:
-    # Use valid Hugging Face models or local paths
-    disease_predictor = pipeline("text-classification", model="distilbert-base-uncased")
-    medication_recommender = pipeline("text-classification", model="distilbert-base-uncased")
+    llm = OllamaLLM(model="llama3.1")  # Ensure this model is available
+    logging.info("Ollama model initialized successfully.")
 except Exception as e:
-    print(f"Error loading models: {e}")
-    # Fallback to dummy predictions for development
-    disease_predictor = None
-    medication_recommender = None
+    logging.error(f"Error initializing Ollama model: {str(e)}")
+    llm = None
 
+# Function to generate predictions
+def predict_disease(symptoms):
+    try:
+        prompt = ChatPromptTemplate.from_template(
+            "Given the symptoms: {symptoms}, what possible diseases could the patient have?"
+        )
+        
+        formatted_prompt = prompt.format(symptoms=symptoms)
+        response = llm.invoke(formatted_prompt) if llm else "LLM not available"
+
+        return response
+    except Exception as e:
+        logging.error(f"Error in prediction: {str(e)}")
+        return "Error generating response"
 @app.route('/predict', methods=['POST'])
-def predict_disease():
+def predict():
     try:
-        data = request.json
-        symptoms = data.get('symptoms', '')
-        
-        if disease_predictor:
-            prediction = disease_predictor(symptoms)
-            return jsonify(prediction)
-        else:
-            # Dummy response for development
-            return jsonify({
-                'disease': 'Sample Disease',
-                'confidence': 0.85
-            })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        data = request.get_json()
 
-@app.route('/medications', methods=['POST'])
-def recommend_medications():
-    try:
-        data = request.json
-        condition = data.get('condition', '')
-        patient_data = data.get('patientData', {})
-        
-        if medication_recommender:
-            recommendations = medication_recommender(condition)
-            return jsonify(recommendations)
-        else:
-            # Dummy response for development
-            return jsonify({
-                'medications': ['Med A', 'Med B'],
-                'dosage': '100mg daily',
-                'confidence': 0.9
-            })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        if not data:
+            logging.error("No JSON data received")
+            return jsonify({'error': 'Invalid request. Expected JSON data'}), 400
 
-@app.route('/risk-score', methods=['POST'])
-def calculate_risk_score():
-    try:
-        data = request.json
-        patient_data = data.get('patientData', {})
-        
-        # Calculate risk score based on patient data
-        # This is a simplified example
-        risk_factors = len(patient_data.get('diseaseHistory', []))
-        age_factor = patient_data.get('age', 0) / 100
-        
-        risk_score = min((risk_factors * 0.2 + age_factor) * 100, 100)
-        
-        return jsonify({
-            'riskScore': risk_score,
-            'riskLevel': 'High' if risk_score > 70 else 'Medium' if risk_score > 30 else 'Low',
-            'factors': ['Age', 'Disease History']
-        })
+        symptoms = data.get("symptoms", "").strip()
+
+        if not symptoms:
+            logging.error("Symptoms field missing or empty")
+            return jsonify({'error': 'Symptoms cannot be empty'}), 400
+
+        logging.info(f"Received symptoms: {symptoms}")
+
+        prediction = predict_disease(symptoms)
+
+        if not prediction:
+            logging.error("Prediction function returned empty response")
+            return jsonify({'error': 'Failed to generate prediction'}), 500
+
+        return jsonify({'prediction': prediction})
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logging.error(f"Unexpected error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
+
 
 if __name__ == '__main__':
     app.run(port=5001, debug=True)

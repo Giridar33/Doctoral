@@ -1,21 +1,50 @@
 import React, { useState } from 'react';
-import { UserCircle2 } from 'lucide-react'; 
+import { UserCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const HomeChat = () => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Mock sending messages
-  const handleSend = () => {
-    if (inputValue.trim() !== '') {
-      setMessages((prev) => [...prev, { text: inputValue, sender: 'user' }]);
-      setInputValue('');
+  const navigate = useNavigate();
+  const handleSend = async () => {
+    if (!inputValue.trim()) {
+      console.error("Symptoms cannot be empty!");
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found!");
+      }
+  
+      const response = await fetch("http://localhost:5001/predict", {  // Correct Flask API URL
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ symptoms: inputValue }),  // Correct JSON key
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || `Server error: ${response.statusText}`);
+      }
+  
+      setMessages((prev) => [...prev, { text: data.prediction, sender: "bot" }]);
+    } catch (error) {
+      console.error("Error calling /predict:", error);
+      setMessages((prev) => [...prev, { text: "Error: Unable to get a response.", sender: "bot" }]);
     }
   };
+  
+  
 
-  // Mock audio upload
   const handleAudioUpload = () => {
     alert('Audio upload clicked! (Implement your logic here)');
   };
@@ -24,10 +53,9 @@ const HomeChat = () => {
     setIsDropdownOpen((prev) => !prev);
   };
 
-  const navigate = useNavigate();
-
   const handleLogout = () => {
-    // Implement logout logic here
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userInfo');
     navigate('/signin');
   };
 
@@ -35,7 +63,6 @@ const HomeChat = () => {
     <>
       <style>
         {`
-
           * {
             margin: 0;
             padding: 0;
@@ -227,11 +254,9 @@ const HomeChat = () => {
       </style>
 
       <div className="homepage-container">
-        {/* Top-right user logo */}
         <div className="user-logo" onClick={toggleDropdown}>
           <UserCircle2 color="#5563DE" size={50} />
         </div>
-        {/* Conditionally render the dropdown if isDropdownOpen is true */}
         {isDropdownOpen && (
           <div className="user-dropdown">
             <div className="user-dropdown-item">
@@ -242,7 +267,6 @@ const HomeChat = () => {
             </div>
           </div>
         )}
-        {/* The chat UI occupying 80% of the screen */}
         <div className="chat-container">
           <div className="chat-header">Healthcare Chatbot</div>
 
@@ -266,7 +290,6 @@ const HomeChat = () => {
               onChange={(e) => setInputValue(e.target.value)}
             />
             <div className="chat-buttons">
-              {/* Audio Upload Button */}
               <button
                 className="icon-button"
                 onClick={handleAudioUpload}
@@ -275,7 +298,6 @@ const HomeChat = () => {
                 &#127908;
               </button>
 
-              {/* Send Text Button */}
               <button
                 className="icon-button"
                 onClick={handleSend}

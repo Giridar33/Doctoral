@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const SignIn = () => {
+const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
 
-  const navigate = useNavigate(); 
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,17 +18,33 @@ const SignIn = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (
-        formData.email === 'sample@gmail.com' &&
-        formData.password === '123456'
-      ) {
-        // Redirect to '/profile' if they match
-        navigate('/profile');
-      } else {
-        alert('Invalid email or password.');
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Invalid credentials');
       }
+
+      // Store token in localStorage
+      localStorage.setItem('token', data.token);
+
+      // Redirect to Profile page
+      navigate('/home');
+    } catch (error) {
+      setError(error.message);
+    }
   };
 
   return (
@@ -112,12 +129,19 @@ const SignIn = () => {
           .signup-link a:hover {
             text-decoration: underline;
           }
+          .error-message {
+            color: red;
+            text-align: center;
+            margin-bottom: 1rem;
+          }
         `}
       </style>
 
       <div className="signin-container">
         <form className="signin-form" onSubmit={handleSubmit}>
           <h2>Sign In</h2>
+
+          {error && <p className="error-message">{error}</p>}
 
           <label htmlFor="email">Email</label>
           <input
@@ -150,4 +174,4 @@ const SignIn = () => {
   );
 };
 
-export default SignIn;
+export default Login;
