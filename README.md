@@ -15,3 +15,4 @@ Key Features:
 5.	Recommends personalized drug dosages based on a patient’s genetic makeup.
 6.	Generates a risk score to guide doctors on urgency levels.
 7.	Provides evidence-based treatment suggestions with explainable AI (XAI).
+"# medic_assistant" 
